@@ -211,13 +211,19 @@ pub struct BitReader<'a> {
 }
 
 impl<'a> BitReader<'a> {
-    pub fn new(buffer: &'a [u8]) -> Self {
-        Self {
+    pub fn new(buffer: &'a [u8]) -> Result<Self, io::Error> {
+        if buffer.len() % 4 != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "BitReader buffer must have the length as a multiple of 4",
+            ));
+        }
+        Ok(Self {
             buffer,
             scratch: 0,
             scratch_bits: 0,
             bits_read: 0,
-        }
+        })
     }
 
     pub fn read_bits(&mut self, bits: usize) -> Result<u32, io::Error> {
@@ -249,7 +255,10 @@ impl<'a> BitReader<'a> {
             // When aligning, the padded value should be 0,
             // if the returned value is different, something went wrong
             if value != 0 {
-                return Err(io::ErrorKind::InvalidData.into());
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Invalid padding, alignment bits must all be 0",
+                ));
             }
         }
 
@@ -443,7 +452,7 @@ mod tests {
         writer.write_bits(1, 1).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
-        let mut reader = BitReader::new(&writer_bytes);
+        let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         assert_eq!(reader.read_bits(2).unwrap(), 3);
         assert_eq!(reader.read_bits(5).unwrap(), 5);
@@ -462,7 +471,7 @@ mod tests {
         writer.write(&bytes).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
-        let mut reader = BitReader::new(&writer_bytes);
+        let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         let mut new_bytes = vec![0u8; bytes.len()];
         reader.read(&mut new_bytes).unwrap();
@@ -489,7 +498,7 @@ mod tests {
         bincode::serialize_into(&mut writer, &message).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
-        let mut reader = BitReader::new(&writer_bytes);
+        let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         let de_message: TestMessage = bincode::deserialize_from(&mut reader).unwrap();
 
@@ -513,7 +522,7 @@ mod tests {
         writer.write_bits(1, 2).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
-        let mut reader = BitReader::new(&writer_bytes);
+        let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         assert_eq!(reader.read_bits(5).unwrap(), 3);
         let de_message: TestMessage = bincode::deserialize_from(&mut reader).unwrap();
@@ -542,7 +551,7 @@ mod tests {
         writer.write_varint_i16(-16000).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
-        let mut reader = BitReader::new(&writer_bytes);
+        let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         assert_eq!(reader.read_varint_u64().unwrap(), 5);
         assert_eq!(reader.read_varint_u64().unwrap(), high_number);
@@ -574,7 +583,7 @@ mod tests {
         writer.write_varint_i16(-16000).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
-        let mut reader = BitReader::new(&writer_bytes);
+        let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         assert_eq!(reader.read_bits(5).unwrap(), 3);
 
@@ -598,7 +607,7 @@ mod tests {
         writer.write_bool(false).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
-        let mut reader = BitReader::new(&writer_bytes);
+        let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         assert_eq!(reader.read_bool().unwrap(), true);
         assert_eq!(reader.read_bool().unwrap(), false);
@@ -616,7 +625,7 @@ mod tests {
         writer.write_f64(12345.6789).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
-        let mut reader = BitReader::new(&writer_bytes);
+        let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         assert_eq!(reader.read_bool().unwrap(), true);
         assert_eq!(reader.read_f32().unwrap(), 1234.5678);
