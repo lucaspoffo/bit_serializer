@@ -434,7 +434,6 @@ fn zig_zag_decode(value: u64) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bincode;
     use serde::{Deserialize, Serialize};
 
     #[test]
@@ -443,39 +442,39 @@ mod tests {
 
         // You can write bools and they use only one bit
         writer.write_bool(true).unwrap();
-        
+
         // You can write values with how many bits you wish
         // Write the value 3 with only 2 bits
         let value: u32 = 3;
         writer.write_bits(value, 2).unwrap();
 
         // You can also write write basic types
-        writer.write_u8(0).unwrap();  // uses 8 bits
-        writer.write_u16(1).unwrap();   // uses 16 bits
-        writer.write_u32(2).unwrap();   // uses 32 bits
-        writer.write_u64(3).unwrap();   // uses 64 bits
-        writer.write_i64(-1).unwrap();  // uses 16 bits
-        writer.write_i32(-2).unwrap();  // uses 32 bits
-        writer.write_i64(-3).unwrap();  // uses 64 bits
+        writer.write_u8(0).unwrap(); // uses 8 bits
+        writer.write_u16(1).unwrap(); // uses 16 bits
+        writer.write_u32(2).unwrap(); // uses 32 bits
+        writer.write_u64(3).unwrap(); // uses 64 bits
+        writer.write_i64(-1).unwrap(); // uses 16 bits
+        writer.write_i32(-2).unwrap(); // uses 32 bits
+        writer.write_i64(-3).unwrap(); // uses 64 bits
 
         // But you can also use the varint encoding variation
         // That tries to use the least number of bits to encode the value
         writer.write_varint_u16(1).unwrap(); // uses 8 bits
         writer.write_varint_u32(2).unwrap(); // uses 8 bits
         writer.write_varint_u64(3).unwrap(); // uses 8 bits
-        writer.write_varint_i16(-1).unwrap();// uses 8 bits
-        writer.write_varint_i32(-2).unwrap();// uses 8 bits  
-        writer.write_varint_i64(-3).unwrap();// uses 8 bits
-        // Bigger values will use more than one byte
+        writer.write_varint_i16(-1).unwrap(); // uses 8 bits
+        writer.write_varint_i32(-2).unwrap(); // uses 8 bits
+        writer.write_varint_i64(-3).unwrap(); // uses 8 bits
+                                              // Bigger values will use more than one byte
 
         // Float types
         writer.write_f32(1.0).unwrap(); // uses 32 bits
         writer.write_f64(2.0).unwrap(); // uses 64 bits
-        
+
         // Since the serializers impl Write/Read, we can use bincode
         // Or write/read bytes directly to/from them
         let bytes = vec![7u8; 20];
-        writer.write(&bytes).unwrap();
+        writer.write_all(&bytes).unwrap();
 
         #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
         struct SimpleStruct {
@@ -498,9 +497,9 @@ mod tests {
         let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         // Now to the reading, just replace write for read, and do it in the same order :)
-        assert_eq!(reader.read_bool().unwrap(), true);
+        assert!(reader.read_bool().unwrap());
         assert_eq!(reader.read_bits(2).unwrap(), 3);
-        
+
         assert_eq!(reader.read_u8().unwrap(), 0);
         assert_eq!(reader.read_u16().unwrap(), 1);
         assert_eq!(reader.read_u32().unwrap(), 2);
@@ -520,7 +519,7 @@ mod tests {
         assert_eq!(reader.read_f64().unwrap(), 2.0);
 
         let mut new_bytes = vec![0u8; bytes.len()];
-        reader.read(&mut new_bytes).unwrap();
+        reader.read_exact(&mut new_bytes).unwrap();
         assert_eq!(bytes, new_bytes);
 
         let de_message: SimpleStruct = bincode::deserialize_from(&mut reader).unwrap();
@@ -536,7 +535,7 @@ mod tests {
         // Now it's not aligned
 
         let bytes = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        writer.write(&bytes).unwrap();
+        writer.write_all(&bytes).unwrap();
 
         writer.write_bits(7, 12).unwrap();
         writer.write_bits(1, 1).unwrap();
@@ -547,7 +546,7 @@ mod tests {
         assert_eq!(reader.read_bits(2).unwrap(), 3);
         assert_eq!(reader.read_bits(5).unwrap(), 5);
         let mut new_bytes = vec![0u8; bytes.len()];
-        reader.read(&mut new_bytes).unwrap();
+        reader.read_exact(&mut new_bytes).unwrap();
         assert_eq!(new_bytes, bytes);
         assert_eq!(reader.read_bits(12).unwrap(), 7);
         assert_eq!(reader.read_bits(1).unwrap(), 1);
@@ -558,13 +557,13 @@ mod tests {
         let mut writer = BitWriter::default();
 
         let bytes = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        writer.write(&bytes).unwrap();
+        writer.write_all(&bytes).unwrap();
 
         let writer_bytes = writer.consume().unwrap();
         let mut reader = BitReader::new(&writer_bytes).unwrap();
 
         let mut new_bytes = vec![0u8; bytes.len()];
-        reader.read(&mut new_bytes).unwrap();
+        reader.read_exact(&mut new_bytes).unwrap();
         assert_eq!(new_bytes, bytes);
     }
 
@@ -699,11 +698,11 @@ mod tests {
         let writer_bytes = writer.consume().unwrap();
         let mut reader = BitReader::new(&writer_bytes).unwrap();
 
-        assert_eq!(reader.read_bool().unwrap(), true);
-        assert_eq!(reader.read_bool().unwrap(), false);
-        assert_eq!(reader.read_bool().unwrap(), true);
-        assert_eq!(reader.read_bool().unwrap(), true);
-        assert_eq!(reader.read_bool().unwrap(), false);
+        assert!(reader.read_bool().unwrap());
+        assert!(!reader.read_bool().unwrap());
+        assert!(reader.read_bool().unwrap());
+        assert!(reader.read_bool().unwrap());
+        assert!(!reader.read_bool().unwrap());
     }
 
     #[test]
@@ -717,7 +716,7 @@ mod tests {
         let writer_bytes = writer.consume().unwrap();
         let mut reader = BitReader::new(&writer_bytes).unwrap();
 
-        assert_eq!(reader.read_bool().unwrap(), true);
+        assert!(reader.read_bool().unwrap());
         assert_eq!(reader.read_f32().unwrap(), 1234.5678);
         assert_eq!(reader.read_f64().unwrap(), 12345.6789);
     }
