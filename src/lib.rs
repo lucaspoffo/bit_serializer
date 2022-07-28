@@ -473,7 +473,8 @@ mod tests {
         writer.write_varint_i16(-1).unwrap(); // uses 8 bits
         writer.write_varint_i32(-2).unwrap(); // uses 8 bits
         writer.write_varint_i64(-3).unwrap(); // uses 8 bits
-                                              // Bigger values will use more than one byte
+
+        // Bigger values will use more than one byte
 
         // Float types
         writer.write_f32(1.0).unwrap(); // uses 32 bits

@@ -1,6 +1,13 @@
 [package]
-name = "reserializer"
-version = "0.1.0"
+name = "bit_serializer"
+version = "0.0.1"
+description = "A binary serialization / deserialization with bit level control"
+categories = ["encoding", "network-programming"]
+keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
+documentation = "https://docs.rs/bit_serializer"
+repository = "https://github.com/lucaspoffo/bit_serializer"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
