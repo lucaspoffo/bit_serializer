@@ -9,6 +9,14 @@ pub struct BitWriter {
 }
 
 impl BitWriter {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            buffer: Vec::with_capacity(capacity),
+            scratch: 0,
+            scratch_bits: 0,
+        }
+    }
+
     pub fn consume(mut self) -> Result<Vec<u8>, io::Error> {
         self.flush_bits()?;
         Ok(self.buffer)
