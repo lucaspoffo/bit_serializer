@@ -142,6 +142,14 @@ impl BitWriter {
         let value = zig_zag_encode(value);
         self.write_varint_u64(value)
     }
+
+    pub fn write_f32(&mut self, value: f32) -> Result<(), io::Error> {
+        self.write_u32(value.to_bits())
+    }
+
+    pub fn write_f64(&mut self, value: f64) -> Result<(), io::Error> {
+        self.write_u64(value.to_bits())
+    }
 }
 
 impl Write for BitWriter {
@@ -268,7 +276,7 @@ impl<'a> BitReader<'a> {
         let low_bits = self.read_bits(32)?;
         let high_bits = self.read_bits(32)?;
 
-        let value = low_bits as u64 & ((high_bits as u64) << 32);
+        let value = low_bits as u64 | ((high_bits as u64) << 32);
         Ok(value)
     }
 
@@ -334,6 +342,16 @@ impl<'a> BitReader<'a> {
         let value = self.read_varint_u64()?;
         let value = zig_zag_decode(value);
         Ok(value)
+    }
+
+    pub fn read_f32(&mut self) -> Result<f32, io::Error> {
+        let value = self.read_u32()?;
+        Ok(f32::from_bits(value))
+    }
+
+    pub fn read_f64(&mut self) -> Result<f64, io::Error> {
+        let value = self.read_u64()?;
+        Ok(f64::from_bits(value))
     }
 }
 
@@ -587,5 +605,21 @@ mod tests {
         assert_eq!(reader.read_bool().unwrap(), true);
         assert_eq!(reader.read_bool().unwrap(), true);
         assert_eq!(reader.read_bool().unwrap(), false);
+    }
+
+    #[test]
+    fn float() {
+        let mut writer = BitWriter::default();
+        writer.write_bool(true).unwrap();
+
+        writer.write_f32(1234.5678).unwrap();
+        writer.write_f64(12345.6789).unwrap();
+
+        let writer_bytes = writer.consume().unwrap();
+        let mut reader = BitReader::new(&writer_bytes);
+
+        assert_eq!(reader.read_bool().unwrap(), true);
+        assert_eq!(reader.read_f32().unwrap(), 1234.5678);
+        assert_eq!(reader.read_f64().unwrap(), 12345.6789);
     }
 }
